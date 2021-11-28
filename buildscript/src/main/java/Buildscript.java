@@ -2,18 +2,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
+import java.util.function.Consumer;
 
 import io.github.coolcrabs.brachyura.compiler.java.BrachyuraJavaFileManager;
 import io.github.coolcrabs.brachyura.compiler.java.JavaCompilation;
+import io.github.coolcrabs.brachyura.decompiler.BrachyuraDecompiler;
 import io.github.coolcrabs.brachyura.dependency.JavaJarDependency;
 import io.github.coolcrabs.brachyura.fabric.FabricLoader;
 import io.github.coolcrabs.brachyura.fabric.FabricMaven;
@@ -25,7 +26,6 @@ import io.github.coolcrabs.brachyura.mappings.Namespaces;
 import io.github.coolcrabs.brachyura.mappings.tinyremapper.MappingTreeMappingProvider;
 import io.github.coolcrabs.brachyura.mappings.tinyremapper.RemapperProcessor;
 import io.github.coolcrabs.brachyura.maven.MavenId;
-import io.github.coolcrabs.brachyura.minecraft.Minecraft;
 import io.github.coolcrabs.brachyura.processing.ProcessingEntry;
 import io.github.coolcrabs.brachyura.processing.ProcessorChain;
 import io.github.coolcrabs.brachyura.processing.sinks.ZipProcessingSink;
@@ -35,18 +35,17 @@ import io.github.coolcrabs.brachyura.util.AtomicFile;
 import io.github.coolcrabs.brachyura.util.JvmUtil;
 import io.github.coolcrabs.brachyura.util.PathUtil;
 import io.github.coolcrabs.brachyura.util.Util;
+import net.fabricmc.accesswidener.AccessWidenerReader;
+import net.fabricmc.accesswidener.AccessWidenerVisitor;
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import net.fabricmc.mappingio.format.MappingFormat;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
-import net.fabricmc.mappingio.tree.MappingTree.ClassMapping;
-import net.fabricmc.mappingio.tree.MappingTree.FieldMapping;
-import net.fabricmc.mappingio.tree.MappingTree.MethodMapping;
 import net.fabricmc.tinyremapper.TinyRemapper;
 
 public class Buildscript extends FabricProject {
-    static final boolean SODIUM = true;
+    static final boolean SODIUM = false;
 
     @Override
     public String getMcVersion() {
@@ -55,33 +54,7 @@ public class Buildscript extends FabricProject {
 
     @Override
     public MappingTree createMappings() {
-        try {
-            MemoryMappingTree r = new MemoryMappingTree(false);
-            getIntermediary().tree.accept(r);
-            Minecraft.getMojmap(getMcVersion(), Minecraft.getVersion(getMcVersion())).accept(r);
-            int intId = r.getNamespaceId(Namespaces.INTERMEDIARY);
-            Iterator<? extends ClassMapping> clsIt = ((MappingTree)r).getClasses().iterator();
-            while (clsIt.hasNext()) {
-                ClassMapping cls = clsIt.next();
-                if (cls.getName(intId) == null) {
-                    clsIt.remove();
-                } else {
-                    Iterator<? extends MethodMapping> methodIt = cls.getMethods().iterator();
-                    while (methodIt.hasNext()) {
-                        MethodMapping method = methodIt.next();
-                        if (method.getName(intId) == null) methodIt.remove();
-                    }
-                    Iterator<? extends FieldMapping> fieldIt = cls.getFields().iterator();
-                    while (fieldIt.hasNext()) {
-                        FieldMapping field = fieldIt.next();
-                        if (field.getName(intId) == null) fieldIt.remove();
-                    }
-                }
-            }
-            return r;
-        } catch (IOException e) {
-            throw Util.sneak(e);
-        }
+        return createMojmap();
     }
 
     @Override
@@ -92,6 +65,17 @@ public class Buildscript extends FabricProject {
     @Override
     public Path getSrcDir() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Consumer<AccessWidenerVisitor> getAw() {
+        return v -> {
+            try {
+                new AccessWidenerReader(v).read(Files.newBufferedReader(getResourcesDir().resolve("iris.accesswidener")), Namespaces.NAMED);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
     }
 
     @Override
@@ -231,6 +215,11 @@ public class Buildscript extends FabricProject {
                 .build()
             )
         .build();
+    }
+
+    @Override
+    public BrachyuraDecompiler decompiler() {
+        return SODIUM ? null : super.decompiler();
     }
     
 }

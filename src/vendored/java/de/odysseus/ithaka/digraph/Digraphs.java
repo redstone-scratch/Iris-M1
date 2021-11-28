@@ -369,7 +369,7 @@ public class Digraphs {
 		// map vertices to their component graph
 		Map<V, G> vertex2subgraph = new HashMap<>();
 		for (Set<V> set : sets) {
-			G subgraph = subgraph(digraph, set, factory2);
+			G subgraph = (G) subgraph(digraph, set, (DigraphFactory) factory2);
 			for (V v : subgraph.vertices()) {
 				assert digraph.contains(v) && !vertex2subgraph.containsKey(v);
 				vertex2subgraph.put(v, subgraph);
