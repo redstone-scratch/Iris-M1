@@ -14,7 +14,6 @@ import java.util.function.Consumer;
 
 import io.github.coolcrabs.brachyura.compiler.java.BrachyuraJavaFileManager;
 import io.github.coolcrabs.brachyura.compiler.java.JavaCompilation;
-import io.github.coolcrabs.brachyura.decompiler.BrachyuraDecompiler;
 import io.github.coolcrabs.brachyura.dependency.JavaJarDependency;
 import io.github.coolcrabs.brachyura.fabric.FabricLoader;
 import io.github.coolcrabs.brachyura.fabric.FabricMaven;
@@ -45,7 +44,7 @@ import net.fabricmc.mappingio.tree.MemoryMappingTree;
 import net.fabricmc.tinyremapper.TinyRemapper;
 
 public class Buildscript extends FabricProject {
-    static final boolean SODIUM = false;
+    static final boolean SODIUM = true;
 
     @Override
     public String getMcVersion() {
@@ -216,10 +215,4 @@ public class Buildscript extends FabricProject {
             )
         .build();
     }
-
-    @Override
-    public BrachyuraDecompiler decompiler() {
-        return SODIUM ? null : super.decompiler();
-    }
-    
 }
